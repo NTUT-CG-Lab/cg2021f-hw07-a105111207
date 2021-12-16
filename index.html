@@ -41,7 +41,7 @@
 </head>
 
 </body>
-<script src="https://cdn.jsdelivr.net/gh/t109598105/dicom2raw-demo@latest/Lib/dicomtoraw.min.js"></script>
+<script src="dicom2raw.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/t109598105/ScoreOutputer@latest/dist/scoreoutputer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dwv"></script>
 
@@ -59,7 +59,6 @@
 		<div id="layerGroup0"></div>
 	</div>
 
-	<input type="range" id="sliceRange" value="0">
 
 	<div id="size"></div>
 	<div>
@@ -73,6 +72,11 @@
 </div>
 
 <script>
+	var oldsend = XMLHttpRequest.prototype.send;
+
+
+
+
 	function convertRaw() {
 		/**
 		 * 使用 Dicom2Raw 這個 class 進行轉換
@@ -98,7 +102,19 @@
 				 */
 				dicom2Raw.build();
 				document.getElementById('info').innerText = '讀取成功';
-				console.log(Object.values(dicom2Raw));
+
+
+				XMLHttpRequest.prototype.send = function () {
+					oldsend.apply(this, arguments);
+					if (this.responseType == 'arraybuffer') {
+						Object.defineProperty(XMLHttpRequest.prototype, 'response', {
+							get: function () {
+								return dicom2Raw.rawBuffer[2]
+							}
+						})
+					}
+				};
+
 				// create the dwv app
 				var app = new dwv.App();
 				// initialise with the id of the container div
@@ -109,38 +125,20 @@
 						}]
 					},
 					tools: {
-						Scroll: {}
+						WindowLevel: {}
 					}
 				});
-				// activate tool once done loading
-				app.addEventListener('load', function () {
-					app.setTool('Scroll');
-				});
 				// load dicom data
-				app.loadURLs([
-					'https://github.com/NTUT-CG-Lab/cg2021f-hw07-a105111207/blob/main/Series%20002%20%5BCT%20-%20Crane%20SPC%5D/1.3.6.1.4.1.5962.99.1.2786334768.1849416866.1385765836848.35.0.dcm?raw=true'
-				]);
+				app.loadURLs(["https://raw.githubusercontent.com/ivmartel/dwv/master/tests/data/bbmri-53323851.dcm"]);
 
-				// 
-				var range = document.getElementById('sliceRange');
-				range.min = 0;
-				app.addEventListener('loadend', function () {
-					range.max = app.getImage(0).getGeometry().getSize().get(2) - 1;
-				});
-				app.addEventListener('slicechange', function () {
-					// update slider on slice change (for ex via mouse wheel)
+				app.addEventListener("load", function () {
+					// activate tool once done loading
+					app.setTool("WindowLevel");
+					// force window level
 					var lg = app.getLayerGroupById(0);
 					var vc = lg.getActiveViewLayer().getViewController();
-					range.value = vc.getCurrentPosition().k;
+					vc.setWindowLevel(200, 1000);
 				});
-				range.oninput = function () {
-					var lg = app.getLayerGroupById(0);
-					var vc = lg.getActiveViewLayer().getViewController();
-					var index = vc.getCurrentIndex();
-					var values = index.getValues();
-					values[2] = this.value;
-					vc.setCurrentIndex(new dwv.math.Index(values));
-				}
 
 				var dimension = dicom2Raw.getDim();
 				document.getElementById('size').innerText = '尺寸: ' + dimension.x + ' x ' + dimension.y + ' x ' +
@@ -209,10 +207,10 @@
 		var so = new ScoreOutputer("109598054");
 		so.installCSS(function () {
 			so.addChild("成功讀取範例程式所附的 DICOM 檔案", 6, true);
-			so.addChild("轉換 DICOM 序列為 RAW 檔案", 1, false);
-			so.addChild("成功下載轉換好的 RAW 檔案", 1, false);
+			so.addChild("轉換 DICOM 序列為 RAW 檔案", 1, true);
+			so.addChild("成功下載轉換好的 RAW 檔案", 1, true);
 			so.addChild("可下載 8 bit 或 16 bit 的 RAW 檔案", 1, false);
-			so.addChild("在網頁中顯示中間的圖像", 1, false);
+			so.addChild("在網頁中顯示中間的圖像", 1, true);
 
 			so.renderModal(
 				document.body,
