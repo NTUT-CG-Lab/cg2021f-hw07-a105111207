@@ -109,7 +109,7 @@
 					if (this.responseType == 'arraybuffer') {
 						Object.defineProperty(XMLHttpRequest.prototype, 'response', {
 							get: function () {
-								return dicom2Raw.rawBuffer[2]
+								return dicom2Raw.rawBuffer[72]
 							}
 						})
 					}
